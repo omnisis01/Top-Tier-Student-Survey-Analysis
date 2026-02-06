@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>최상위권 수험생 설문 분석</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #f8fafc, #eff6ff); min-height: 100vh; padding: 24px; color: #1e293b; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  header { margin-bottom: 32px; }
+  header h1 { font-size: 2rem; font-weight: 800; color: #1e293b; margin-bottom: 6px; }
+  header p { color: #64748b; font-size: 0.95rem; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 4px; }
+  .tab { padding: 12px 24px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; background: #fff; color: #64748b; transition: all 0.2s; white-space: nowrap; }
+  .tab:hover { background: #f1f5f9; }
+  .tab.active { background: #2563eb; color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3); transform: scale(1.03); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card { background: #fff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); padding: 24px; margin-bottom: 20px; }
+  .card h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 20px; color: #1e293b; }
+  .card h3 span { font-size: 0.85rem; color: #94a3b8; font-weight: 400; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+  .insight-box { padding: 16px; border-radius: 12px; margin-bottom: 12px; }
+  .insight-box h4 { font-weight: 700; margin-bottom: 8px; font-size: 1rem; }
+  .insight-box p { font-size: 0.85rem; color: #475569; }
+  .red-bg { background: #fef2f2; } .red-bg h4 { color: #7f1d1d; }
+  .purple-bg { background: #faf5ff; } .purple-bg h4 { color: #581c87; }
+  .pink-bg { background: #fdf2f8; } .pink-bg h4 { color: #831843; }
+  .green-bg { background: #f0fdf4; } .green-bg h4 { color: #14532d; }
+  .amber-bg { background: #fffbeb; } .amber-bg h4 { color: #78350f; }
+  .blue-bg { background: #eff6ff; } .blue-bg h4 { color: #1e3a5f; }
+  .slate-bg { background: #f8fafc; } .slate-bg h4 { color: #1e293b; }
+  .indigo-bg { background: #eef2ff; } .indigo-bg h4 { color: #312e81; }
+  .stat-card { padding: 20px; border-radius: 14px; text-align: center; }
+  .stat-card .rank { font-size: 1.5rem; font-weight: 800; color: #dc2626; }
+  .stat-card .label { font-size: 0.85rem; font-weight: 600; margin-top: 4px; }
+  .stat-card .value { font-size: 1.4rem; font-weight: 800; color: #991b1b; margin-top: 8px; }
+  .stat-card .detail { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+  .metric-card { padding: 20px; border-radius: 14px; }
+  .metric-card h4 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+  .metric-card .big-num { font-size: 2rem; font-weight: 800; }
+  .metric-card .sub { font-size: 0.8rem; color: #64748b; margin-top: 6px; }
+  .metric-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.9rem; }
+  .chart-wrap { position: relative; width: 100%; }
+  .chart-wrap canvas { width: 100% !important; }
+
+  /* 총평 섹션 */
+  .report-section { margin-bottom: 28px; }
+  .report-section > h3 { font-size: 1.4rem; font-weight: 700; border-bottom: 3px solid #3b82f6; padding-bottom: 8px; margin-bottom: 20px; }
+  .report-insight { padding: 20px; border-radius: 12px; margin-bottom: 16px; }
+  .report-insight h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+  .report-insight ul { list-style: none; padding: 0; margin-bottom: 10px; }
+  .report-insight ul li { font-size: 0.85rem; color: #475569; padding: 3px 0; padding-left: 12px; position: relative; }
+  .report-insight ul li::before { content: "•"; position: absolute; left: 0; }
+  .report-takeaway { padding: 10px 14px; background: rgba(255,255,255,0.7); border-radius: 8px; font-size: 0.85rem; }
+  .report-takeaway strong { display: inline; }
+
+  .priority-box { padding: 20px; border-radius: 12px; margin-bottom: 16px; border-left: 5px solid; }
+  .priority-box h4 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+  .priority-box .collect { font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
+  .priority-box ul { list-style: none; padding: 0; margin-bottom: 10px; margin-left: 12px; }
+  .priority-box ul li { font-size: 0.82rem; color: #475569; padding: 2px 0; padding-left: 12px; position: relative; }
+  .priority-box ul li::before { content: "•"; position: absolute; left: 0; }
+  .priority-example { padding: 8px 12px; background: #fff; border-radius: 6px; font-size: 0.82rem; color: #475569; }
+  .priority-example p { margin: 3px 0; }
+
+  .conclusion { padding: 24px; background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; border-radius: 14px; margin-top: 24px; }
+  .conclusion h4 { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
+  .conclusion ul { list-style: none; padding: 0; }
+  .conclusion ul li { font-size: 0.88rem; padding: 4px 0; }
+
+  .tamgu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .tamgu-legend { margin-top: 8px; font-size: 0.78rem; }
+  .tamgu-legend .row { display: flex; justify-content: space-between; padding: 2px 0; align-items: center; }
+  .tamgu-legend .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 6px; }
+  .tamgu-note { text-align: center; font-size: 0.88rem; color: #475569; padding: 12px; background: #f8fafc; border-radius: 10px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>최상위권 수험생 설문 분석</h1>
+    <p>메디컬&SKY 지원 가능 학생 82명 대상 (N수생)</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('overview')">📊 개요</button>
+    <button class="tab" onclick="showTab('curiosity')">🔍 궁금도</button>
+    <button class="tab" onclick="showTab('studytime')">⏰ 순공시간</button>
+    <button class="tab" onclick="showTab('materials')">📚 교재/강사</button>
+    <button class="tab" onclick="showTab('achievement')">🎯 달성률</button>
+    <button class="tab" onclick="showTab('report')">📋 총평</button>
+  </div>
+
+  <!-- 개요 -->
+  <div id="overview" class="panel active">
+    <div class="grid-2">
+      <div class="card">
+        <h3>핵심 인사이트</h3>
+        <div class="insight-box red-bg"><h4>🥇 최고 관심사</h4><p>과목별 <strong>실모/콘텐츠</strong> (70.7%)</p></div>
+        <div class="insight-box purple-bg"><h4>⏱️ 순공시간 배분</h4><p>수학 4.5시간 > 국어 2.8시간 > 영어 1.4시간</p></div>
+        <div class="insight-box pink-bg"><h4>📚 TOP 교재</h4><p>국어: 마닳 | 수학: 뉴런 | 영어: 수능특강</p></div>
+        <div class="insight-box green-bg"><h4>🎓 TOP 인강</h4><p>국어: 김승리/강민철 | 수학: 현우진 | 영어: 이명학</p></div>
+        <div class="insight-box amber-bg"><h4>📝 TOP 실모</h4><p>국어: 이감 (압도적) | 수학: 킬캠</p></div>
+      </div>
+      <div class="card">
+        <h3>탐구 과목 선택 <span>(79명 응답)</span></h3>
+        <div class="tamgu-grid">
+          <div>
+            <h4 style="text-align:center;font-weight:600;margin-bottom:10px;font-size:0.95rem;">탐구 1</h4>
+            <div class="chart-wrap"><canvas id="tamgu1Chart" height="200"></canvas></div>
+            <div class="tamgu-legend" id="tamgu1Legend"></div>
+          </div>
+          <div>
+            <h4 style="text-align:center;font-weight:600;margin-bottom:10px;font-size:0.95rem;">탐구 2</h4>
+            <div class="chart-wrap"><canvas id="tamgu2Chart" height="200"></canvas></div>
+            <div class="tamgu-legend" id="tamgu2Legend"></div>
+          </div>
+        </div>
+        <div class="tamgu-note"><strong>압도적 선택:</strong> 탐구1 생명과학1(30%), 탐구2 지구과학1(54%)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 궁금도 -->
+  <div id="curiosity" class="panel">
+    <div class="card">
+      <h3>학생들의 궁금도 순위 <span>(총 표본수 82명)</span></h3>
+      <div class="chart-wrap"><canvas id="curiosityChart" height="320"></canvas></div>
+    </div>
+    <div class="grid-4" id="curiosityCards"></div>
+  </div>
+
+  <!-- 순공시간 -->
+  <div id="studytime" class="panel">
+    <div class="card">
+      <h3>과목별 순공시간 추이</h3>
+      <div class="chart-wrap"><canvas id="studyTimeChart" height="280"></canvas></div>
+    </div>
+    <div class="grid-3">
+      <div class="metric-card" style="background:linear-gradient(135deg,#eff6ff,#dbeafe)">
+        <h4 style="color:#1e3a8a">수학 (최다 투자)</h4>
+        <div class="metric-row"><span>3월</span><strong>3.5시간</strong></div>
+        <div class="metric-row"><span>9월</span><strong>4.5시간</strong></div>
+        <div class="metric-row" style="color:#2563eb"><span>증가율</span><strong>+29%</strong></div>
+      </div>
+      <div class="metric-card" style="background:linear-gradient(135deg,#faf5ff,#f3e8ff)">
+        <h4 style="color:#581c87">국어</h4>
+        <div class="metric-row"><span>3월</span><strong>2.2시간</strong></div>
+        <div class="metric-row"><span>9월</span><strong>2.8시간</strong></div>
+        <div class="metric-row" style="color:#7c3aed"><span>증가율</span><strong>+27%</strong></div>
+      </div>
+      <div class="metric-card" style="background:linear-gradient(135deg,#fdf2f8,#fce7f3)">
+        <h4 style="color:#831843">영어 (최소 투자)</h4>
+        <div class="metric-row"><span>3월</span><strong>1.2시간</strong></div>
+        <div class="metric-row"><span>9월</span><strong>1.4시간</strong></div>
+        <div class="metric-row" style="color:#db2777"><span>증가율</span><strong>+17%</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 교재/강사 -->
+  <div id="materials" class="panel">
+    <div class="card">
+      <h3>TOP 교재 (시기별 통합)</h3>
+      <div class="grid-3">
+        <div><h4 style="font-weight:600;margin-bottom:10px">국어</h4><canvas id="matKorChart" height="220"></canvas></div>
+        <div><h4 style="font-weight:600;margin-bottom:10px">수학</h4><canvas id="matMathChart" height="220"></canvas></div>
+        <div><h4 style="font-weight:600;margin-bottom:10px">영어</h4><canvas id="matEngChart" height="220"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>TOP 인강 강사</h3>
+      <div class="grid-3">
+        <div><h4 style="font-weight:600;margin-bottom:10px">국어</h4><canvas id="tchrKorChart" height="180"></canvas></div>
+        <div><h4 style="font-weight:600;margin-bottom:10px">수학</h4><canvas id="tchrMathChart" height="180"></canvas></div>
+        <div><h4 style="font-weight:600;margin-bottom:10px">영어</h4><canvas id="tchrEngChart" height="180"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>TOP 실전모의고사</h3>
+      <div class="grid-2">
+        <div><h4 style="font-weight:600;margin-bottom:10px">국어</h4><canvas id="mockKorChart" height="200"></canvas></div>
+        <div><h4 style="font-weight:600;margin-bottom:10px">수학</h4><canvas id="mockMathChart" height="200"></canvas></div>
+      </div>
+      <div class="insight-box amber-bg" style="margin-top:16px">
+        <p><strong>🔥 압도적 1위:</strong> 국어는 <strong>이감 모의고사</strong>가 압도적 (39회 언급)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 달성률 -->
+  <div id="achievement" class="panel">
+    <div class="card">
+      <h3>계획 대비 달성률 추이</h3>
+      <div class="chart-wrap"><canvas id="achieveChart" height="280"></canvas></div>
+    </div>
+    <div class="grid-3">
+      <div class="metric-card" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);text-align:center">
+        <h4 style="color:#1e3a8a">평균 달성률</h4>
+        <div class="big-num" style="color:#2563eb">74-76%</div>
+        <div class="sub">최상위권도 계획의 75% 수준 달성</div>
+      </div>
+      <div class="metric-card" style="background:linear-gradient(135deg,#faf5ff,#f3e8ff);text-align:center">
+        <h4 style="color:#581c87">80% 이상 달성</h4>
+        <div class="big-num" style="color:#7c3aed">50%</div>
+        <div class="sub">응답자의 절반만 80% 이상 달성</div>
+      </div>
+      <div class="metric-card" style="background:linear-gradient(135deg,#fdf2f8,#fce7f3);text-align:center">
+        <h4 style="color:#831843">9월 개선</h4>
+        <div class="big-num" style="color:#db2777">+2-3%</div>
+        <div class="sub">9월에 달성률 소폭 상승</div>
+      </div>
+    </div>
+    <div class="card amber-bg" style="margin-top:16px">
+      <h4 style="font-weight:700;color:#78350f;margin-bottom:10px">💡 인사이트</h4>
+      <p style="font-size:0.88rem;color:#475569;line-height:1.8">
+        • 최상위권 학생들도 계획 대비 실제 달성률은 <strong>75% 내외</strong>로 현실적<br>
+        • 80% 이상 달성하는 학생은 절반 미만으로, <strong>과도한 계획은 지양</strong>해야 함<br>
+        • 9월로 갈수록 달성률이 개선되는 경향 → <strong>학습 효율이 점진적으로 향상</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- 총평 -->
+  <div id="report" class="panel">
+    <div class="card">
+      <h2 style="font-size:1.6rem;font-weight:800;margin-bottom:28px">📊 최상위권 수험생 설문 분석 총평</h2>
+
+      <div class="report-section">
+        <h3>1️⃣ 핵심 데이터 인사이트</h3>
+
+        <div class="report-insight" style="background:linear-gradient(135deg,#fef2f2,#fdf2f8)">
+          <h4 style="color:#7f1d1d">인사이트 #1: 실모/콘텐츠와 순공시간이 압도적 관심사</h4>
+          <ul><li>과목별 실모 및 콘텐츠: <strong>70.7%</strong> 궁금 (1위)</li><li>과목별 순공시간: <strong>69.5%</strong> 궁금 (2위)</li><li>과목별 인강 커리큘럼: <strong>63.4%</strong> 궁금 (3위)</li><li>과목별 교재: <strong>64.6%</strong> 궁금 (4위)</li></ul>
+          <div class="report-takeaway"><strong style="color:#7f1d1d">→ 시사점:</strong> 학생들은 "어떤 문제를 풀어야 하는가"와 "시간을 얼마나 써야 하는가"에 가장 큰 관심. 강사나 교재보다 <strong>학습 콘텐츠와 시간 배분 전략</strong>이 우선.</div>
+        </div>
+
+        <div class="report-insight slate-bg">
+          <h4 style="color:#1e293b">인사이트 #2: 진도율(달성률)에 대한 관심은 낮음</h4>
+          <ul><li>진도율: <strong>45.1%</strong> 궁금 (8위, 최하위)</li><li>55%가 "별로/전혀 궁금하지 않음" 응답</li></ul>
+          <div class="report-takeaway"><strong style="color:#1e293b">→ 시사점:</strong> "얼마나 했는가"보다 <strong>"무엇을 했는가"</strong>가 중요함.</div>
+        </div>
+
+        <div class="report-insight blue-bg">
+          <h4 style="color:#1e3a5f">인사이트 #3: 과목별 순공시간 배분 패턴 명확</h4>
+          <ul><li><strong>수학:</strong> 3.5시간(3월) → 4.5시간(9월) [최다 투자]</li><li><strong>국어:</strong> 2.2시간(3월) → 2.8시간(9월)</li><li><strong>영어:</strong> 1.2시간(3월) → 1.4시간(9월) [최소 투자]</li></ul>
+          <div class="report-takeaway"><strong style="color:#1e3a5f">→ 시사점:</strong> 최상위권 학생들은 <strong>수학에 가장 많은 시간</strong>을 투자하며, 영어는 최소 시간만 투자.</div>
+        </div>
+
+        <div class="report-insight purple-bg">
+          <h4 style="color:#581c87">인사이트 #4: 교재/인강/실모 시장 주도자 명확</h4>
+          <div class="grid-3" style="margin-bottom:10px">
+            <div style="padding:10px;background:rgba(255,255,255,0.7);border-radius:8px"><p style="font-weight:700;color:#581c87;margin-bottom:6px;font-size:0.9rem">교재</p><p style="font-size:0.82rem;color:#475569">국어: 마닳(16), 강기분(14)<br>수학: 뉴런(27), 수분감(17)<br>영어: 수능특강(10)</p></div>
+            <div style="padding:10px;background:rgba(255,255,255,0.7);border-radius:8px"><p style="font-weight:700;color:#581c87;margin-bottom:6px;font-size:0.9rem">인강</p><p style="font-size:0.82rem;color:#475569">국어: 김승리·강민철(각13)<br>수학: 현우진(14)<br>영어: 이명학(15)</p></div>
+            <div style="padding:10px;background:rgba(255,255,255,0.7);border-radius:8px"><p style="font-weight:700;color:#581c87;margin-bottom:6px;font-size:0.9rem">실모</p><p style="font-size:0.82rem;color:#475569">국어: 이감(39, 압도적)<br>수학: 킬캠(23)</p></div>
+          </div>
+          <div class="report-takeaway"><strong style="color:#581c87">→ 시사점:</strong> 각 과목별로 <strong>독보적인 1위 브랜드</strong>가 존재. 이 데이터를 제공하면 학생들에게 큰 가치.</div>
+        </div>
+
+        <div class="report-insight amber-bg">
+          <h4 style="color:#78350f">인사이트 #5: 계획 대비 달성률은 70% 중반 수준</h4>
+          <ul><li>수학: 74.2%(3월) → 76.3%(9월)</li><li>영어: 73.4%(3월) → 75.7%(9월)</li><li>80% 이상 달성자는 절반 미만</li></ul>
+          <div class="report-takeaway"><strong style="color:#78350f">→ 시사점:</strong> 최상위권도 <strong>75% 내외</strong>. 현실적인 목표 설정 데이터 제공이 효과적.</div>
+        </div>
+
+        <div class="report-insight green-bg">
+          <h4 style="color:#14532d">인사이트 #6: 탐구 과목은 생명+지구 조합 압도적</h4>
+          <ul><li>탐구1: 생명과학1 (24명, <strong>30%</strong>)</li><li>탐구2: 지구과학1 (43명, <strong>54%</strong>)</li></ul>
+          <div class="report-takeaway"><strong style="color:#14532d">→ 시사점:</strong> 최상위권 자연계 표준 조합은 <strong>"생명+지구"</strong>. 이 조합 최적화 커리큘럼 우선 제공.</div>
+        </div>
+
+        <div class="report-insight indigo-bg">
+          <h4 style="color:#312e81">인사이트 #7: 시기별 학습 자원 변화가 뚜렷함</h4>
+          <ul><li><strong>3월:</strong> 기본서 중심 (강기분, 뉴런)</li><li><strong>6월:</strong> 기출+기본 병행 (수특, 뉴런, 드릴)</li><li><strong>9월:</strong> 실전 중심 (마닳, 드릴, 하사십)</li></ul>
+          <div class="report-takeaway"><strong style="color:#312e81">→ 시사점:</strong> 시기별로 교재와 전략이 명확히 변화. <strong>시기별 맞춤 데이터 제공</strong>이 필수적.</div>
+        </div>
+      </div>
+
+      <div class="report-section">
+        <h3 style="border-color:#10b981">2️⃣ 중점 수집 및 제공 데이터 전략</h3>
+
+        <div class="priority-box" style="background:#fef2f2;border-color:#ef4444">
+          <h4 style="color:#7f1d1d">🥇 우선순위 1 (최고 수요): 실모 및 콘텐츠 데이터</h4>
+          <p class="collect">수집 항목:</p>
+          <ul><li>과목별 × 시기별 가장 많이 푼 실전모의고사 순위</li><li>실모 풀이 개수 (몇 회 분량)</li><li>N제, 기출 콘텐츠 순위</li></ul>
+          <div class="priority-example"><p>💬 "메디컬 합격생들이 9월까지 가장 많이 푼 국어 실모 TOP 5"</p><p>💬 "SKY 진학생들의 수학 실모 평균 풀이량: 6월까지 OO개"</p></div>
+        </div>
+
+        <div class="priority-box" style="background:#eff6ff;border-color:#3b82f6">
+          <h4 style="color:#1e3a5f">🥈 우선순위 2 (높은 수요): 과목별 순공시간 데이터</h4>
+          <p class="collect">수집 항목:</p>
+          <ul><li>과목별 × 시기별 평균 순공시간</li><li>성적대별 순공시간 (상위 1% vs 3% vs 5%)</li><li>전체 순공시간 분포</li></ul>
+          <div class="priority-example"><p>💬 "메디컬 합격생 평균 수학 순공시간: 3월까지 3.5시간, 9월까지 4.5시간"</p></div>
+        </div>
+
+        <div class="priority-box" style="background:#faf5ff;border-color:#8b5cf6">
+          <h4 style="color:#581c87">🥉 우선순위 3 (중간 수요): 인강 커리큘럼 & 교재</h4>
+          <p class="collect">수집 항목:</p>
+          <ul><li>시기별 × 과목별 가장 많이 수강한 인강 커리큘럼</li><li>시기별 × 과목별 가장 많이 사용한 교재</li><li>교재별 평균 완료율</li></ul>
+          <div class="priority-example"><p>💬 "9월까지 최상위권이 가장 많이 수강한 수학 커리큘럼: 현우진 시발점"</p></div>
+        </div>
+
+        <div class="priority-box" style="background:#fffbeb;border-color:#f59e0b">
+          <h4 style="color:#78350f">4️⃣ 우선순위 4 (중간 수요): 인강 강사 & 단과 강사</h4>
+          <p class="collect">수집 항목:</p>
+          <ul><li>과목별 가장 많이 수강한 인강/단과 강사</li><li>강사별 수강생 성적 분포</li></ul>
+          <div class="priority-example"><p>💬 "최상위권이 가장 많이 듣는 국어 인강: 김승리 (16%)"</p></div>
+        </div>
+
+        <div class="priority-box" style="background:#f8fafc;border-color:#94a3b8">
+          <h4 style="color:#1e293b">5️⃣ 우선순위 5 (낮은 수요): 진도율</h4>
+          <p style="font-size:0.85rem;color:#475569">수요가 낮으므로 후순위로 배치. 대신 <strong>"계획 대비 현실적 달성률"</strong> 데이터로 전환하여 제공 권장.</p>
+        </div>
+      </div>
+
+      <div class="conclusion">
+        <h4>💡 핵심 결론</h4>
+        <ul>
+          <li>✓ 학생들은 <strong>실전 콘텐츠(실모)</strong>와 <strong>시간 배분 전략</strong>에 가장 큰 관심</li>
+          <li>✓ <strong>시기별·과목별로 세분화된 데이터</strong>를 제공하는 것이 핵심 가치</li>
+          <li>✓ 각 과목의 <strong>시장 지배적 교재/강사</strong> 정보 제공이 효과적</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#6366f1','#14b8a6','#f97316','#ef4444','#84cc16'];
+const TOTAL = 82;
+let charts = {};
+
+function showTab(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  if (!charts[id]) initCharts(id);
+}
+
+function initCharts(tab) {
+  charts[tab] = true;
+
+  if (tab === 'overview') {
+    const t1 = [{n:'생명과학1',v:24},{n:'물리학1',v:14},{n:'생활과윤리',v:13},{n:'사회문화',v:11},{n:'화학1',v:9},{n:'지구과학1',v:6},{n:'동아시아사',v:2},{n:'한국지리',v:2},{n:'세계지리',v:1}];
+    const t2 = [{n:'지구과학1',v:43},{n:'사회문화',v:14},{n:'생명과학1',v:10},{n:'윤리와사상',v:4},{n:'지구과학2',v:2},{n:'화학2',v:2},{n:'생명과학2',v:1},{n:'세계사',v:1},{n:'물리학2',v:1},{n:'물리학1',v:1}];
+    makeDoughnut('tamgu1Chart', t1, 'tamgu1Legend');
+    makeDoughnut('tamgu2Chart', t2, 'tamgu2Legend');
+  }
+
+  if (tab === 'curiosity') {
+    const labels = ['과목별 실모/콘텐츠','과목별 순공시간','과목별 교재','인강 커리큘럼','전체 순공시간','인강 강사','단과 강사','진도율'];
+    const d1 = [29,24,27,19,17,18,16,16];
+    const d2 = [29,33,26,33,34,30,31,21];
+    const d3 = [18,16,20,18,23,21,23,25];
+    const d4 = [6,9,9,12,8,13,12,20];
+    new Chart(document.getElementById('curiosityChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: '매우 궁금함', data: d1, backgroundColor: '#dc2626' },
+          { label: '조금 궁금함', data: d2, backgroundColor: '#fca5a5' },
+          { label: '별로 궁금하지 않음', data: d3, backgroundColor: '#93c5fd' },
+          { label: '전혀 궁금하지 않음', data: d4, backgroundColor: '#2563eb' }
+        ]
+      },
+      options: { indexAxis: 'y', scales: { x: { stacked: true, max: 85 }, y: { stacked: true } }, plugins: { legend: { position: 'bottom' } }, responsive: true, maintainAspectRatio: false }
+    });
+    const rates = [70.7,69.5,64.6,63.4,62.2,58.5,57.3,45.1];
+    const cardsEl = document.getElementById('curiosityCards');
+    labels.slice(0,4).forEach((l,i) => {
+      cardsEl.innerHTML += `<div class="stat-card" style="background:linear-gradient(135deg,#fef2f2,#fecaca)"><div class="rank">${i+1}위</div><div class="label">${l}</div><div class="value">${rates[i]}%</div><div class="detail">매우 ${((d1[i]/TOTAL)*100).toFixed(0)}% | 조금 ${((d2[i]/TOTAL)*100).toFixed(0)}%</div></div>`;
+    });
+  }
+
+  if (tab === 'studytime') {
+    new Chart(document.getElementById('studyTimeChart'), {
+      type: 'line',
+      data: {
+        labels: ['3월','6월','9월','수능'],
+        datasets: [
+          { label: '수학', data: [3.5,3.8,4.5,4.4], borderColor: '#3b82f6', borderWidth: 3, tension: 0.3 },
+          { label: '국어', data: [2.2,2.4,2.8,3.2], borderColor: '#8b5cf6', borderWidth: 3, tension: 0.3 },
+          { label: '영어', data: [1.2,1.3,1.4,1.5], borderColor: '#ec4899', borderWidth: 3, tension: 0.3 }
+        ]
+      },
+      options: { scales: { y: { title: { display: true, text: '시간' } } }, responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  if (tab === 'materials') {
+    makeBar('matKorChart', ['마닳','강기분','수능특강','수능완성','올오카'], [16,14,13,11,6], '#8b5cf6');
+    makeBar('matMathChart', ['뉴런','수분감','드릴','수능특강','4의규칙'], [27,17,11,8,5], '#3b82f6');
+    makeBar('matEngChart', ['수능특강','키스로직','마더텅','월간조정식','신택스'], [10,5,5,3,3], '#ec4899');
+    makeBar('tchrKorChart', ['김승리','강민철','김동욱'], [13,13,5], '#8b5cf6');
+    makeBar('tchrMathChart', ['현우진','강기원','김범준'], [14,4,3], '#3b82f6');
+    makeBar('tchrEngChart', ['이명학','김지영','션티'], [15,8,7], '#ec4899');
+    makeBar('mockKorChart', ['이감','더프','바탕'], [39,12,9], '#8b5cf6');
+    makeBar('mockMathChart', ['킬캠','더프','강k'], [23,6,6], '#3b82f6');
+  }
+
+  if (tab === 'achievement') {
+    new Chart(document.getElementById('achieveChart'), {
+      type: 'line',
+      data: {
+        labels: ['3월','6월','9월'],
+        datasets: [
+          { label: '수학', data: [74.2,73.5,76.3], borderColor: '#3b82f6', borderWidth: 3, tension: 0.3 },
+          { label: '영어', data: [73.4,73.2,75.7], borderColor: '#ec4899', borderWidth: 3, tension: 0.3 }
+        ]
+      },
+      options: { scales: { y: { min: 70, max: 80, title: { display: true, text: '달성률 (%)' } } }, responsive: true, maintainAspectRatio: false }
+    });
+  }
+}
+
+function makeBar(id, labels, data, color) {
+  new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 6 }] },
+    options: { plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false }
+  });
+}
+
+function makeDoughnut(id, items, legendId) {
+  new Chart(document.getElementById(id), {
+    type: 'doughnut',
+    data: { labels: items.map(i=>i.n), datasets: [{ data: items.map(i=>i.v), backgroundColor: COLORS.slice(0, items.length) }] },
+    options: { cutout: '55%', plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false }
+  });
+  const el = document.getElementById(legendId);
+  items.forEach((item, idx) => {
+    el.innerHTML += `<div class="row"><span><span class="dot" style="background:${COLORS[idx]}"></span>${item.n}</span><strong>${item.v}명</strong></div>`;
+  });
+}
+
+// 초기 탭 차트 로드
+initCharts('overview');
+</script>
+</body>
+</html>
